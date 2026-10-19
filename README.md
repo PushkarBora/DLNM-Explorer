@@ -16,7 +16,7 @@ R 4.1 or later is required.
 | Path | Purpose |
 |---|---|
 | `app.R` | User interface (Home, Method, Instructions, Developers) and server logic |
-| `R/analysis.R` | Analysis engine: file reading, date parsing, merging, descriptive statistics, BDS test, penalised DLNM, diagnostics, SVAR IRF |
+| `R/analysis.R` | Analysis engine: file reading, time parsing, merging, descriptive statistics, BDS test, penalised DLNM |
 | `R/plots.R` | Interactive (plotly) plots and publication PNG figures |
 | `www/styles.css` | Design and colours |
 | `www/img/` | ICAR-IASRI logo and developer photographs |
@@ -49,8 +49,6 @@ R 4.1 or later is required.
 
 ## Notes on the method implementation
 
-* The SVAR uses a just-identified recursive A-model (lower-triangular A with a free diagonal; one-standard-deviation shocks).
-  If SVAR estimation fails, the equivalent Cholesky-orthogonalised VAR impulse response is used and the method column says so.
-* The BDS test is reported for embedding dimensions 2..m and epsilon = 0.5, 1, 1.5 and 2 times the residual SD.
+* The BDS test is reported for embedding dimensions 2..m and epsilon = 0.5, 1, 1.5 and 2 times the residual SD of an ARIMAX model.
 * For the 3D surface, contour and exposure-response plots, effects are predicted on a fine 60-point grid of the exposure;
   tables use the chosen exposure levels (percentiles by default).

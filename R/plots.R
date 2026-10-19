@@ -191,23 +191,11 @@ plot_cumulative <- function(res, xlab, eff_lab) {
                                       line = list(dash = "dash", color = "grey"))))
 }
 
-plot_irf <- function(irf_df, lag_lab) {
-  plotly::plot_ly(irf_df, x = ~Horizon) |>
-    plotly::add_ribbons(ymin = ~Lower, ymax = ~Upper, name = "Bootstrap CI",
-                        fillcolor = "rgba(76,155,232,0.25)", line = list(width = 0)) |>
-    plotly::add_trace(y = ~IRF, type = "scatter", mode = "lines+markers", name = "Response",
-                      line = list(color = "#003B73", width = 3),
-                      marker = list(color = "#D73027", size = 8)) |>
-    plotly_theme(paste0(tools::toTitleCase(lag_lab), " after shock"), "Response") |>
-    plotly::layout(shapes = list(list(type = "line", xref = "paper", x0 = 0, x1 = 1, y0 = 0, y1 = 0,
-                                      line = list(dash = "dash", color = "grey"))))
-}
-
 # ============================================================
 # PUBLICATION FIGURES (PNG) - based on the original R script
 # ============================================================
 
-save_publication_figures <- function(res, irf_df, out_dir, prefix, xlab, lag_lab, eff_lab, dpi = 300, unit = "periods") {
+save_publication_figures <- function(res, out_dir, prefix, xlab, lag_lab, eff_lab, dpi = 300, unit = "periods") {
   files <- character()
   pr <- res$pred; pg <- res$pred_grid
   pv <- as.numeric(pr$predvar); gv <- as.numeric(pg$predvar)
@@ -294,24 +282,5 @@ save_publication_figures <- function(res, irf_df, out_dir, prefix, xlab, lag_lab
   graphics::points(res$cumulative$Exposure_Value, res$cumulative$Cumulative_Effect, pch = 21, bg = "#E07A1F", cex = 1.6)
   graphics::box(); grDevices::dev.off(); files <- c(files, f)
 
-  # 6. IRF
-  if (!is.null(irf_df) && nrow(irf_df)) {
-    f <- file.path(out_dir, paste0(prefix, "_SVAR_IRF.png"))
-    yl <- max(abs(c(irf_df$Lower, irf_df$Upper, irf_df$IRF)), na.rm = TRUE)
-    g <- ggplot2::ggplot(irf_df, ggplot2::aes(Horizon, IRF)) +
-      ggplot2::geom_ribbon(ggplot2::aes(ymin = Lower, ymax = Upper), fill = "#4C9BE8", alpha = 0.25) +
-      ggplot2::geom_line(colour = "#003B73", linewidth = 1.4) +
-      ggplot2::geom_point(colour = "#D73027", size = 2.2) +
-      ggplot2::geom_hline(yintercept = 0, linetype = "dashed", colour = "grey40", linewidth = 0.8) +
-      ggplot2::scale_x_continuous(breaks = pretty(irf_df$Horizon)) +
-      ggplot2::scale_y_continuous(limits = c(-yl, yl)) +
-      ggplot2::labs(x = paste0(tools::toTitleCase(unit), " after shock"), y = "Response") +
-      ggplot2::theme_classic(base_size = 15) +
-      ggplot2::theme(panel.border = ggplot2::element_rect(colour = "black", fill = NA, linewidth = 0.8),
-                     axis.title = ggplot2::element_text(face = "bold"),
-                     axis.text = ggplot2::element_text(colour = "black"))
-    ggplot2::ggsave(f, g, width = 10, height = 7, units = "in", dpi = dpi)
-    files <- c(files, f)
-  }
   files
 }

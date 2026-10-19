@@ -11,9 +11,9 @@ pkgs <- c(
   # data input / output
   "readxl", "openxlsx", "lubridate", "zip",
   # statistics
-  "dlnm", "mgcv", "vars", "tseries", "moments", "forecast", "lmtest",
+  "dlnm", "mgcv", "tseries", "moments", "forecast", "lmtest",
   # graphics
-  "ggplot2", "fields"
+  "fields"
 )
 
 # Only required dependencies are installed (not every optional "Suggests" package)

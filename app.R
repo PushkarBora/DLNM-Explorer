@@ -16,7 +16,6 @@ suppressPackageStartupMessages({
   library(shinycssloaders)
   library(dlnm)
   library(mgcv)
-  library(vars)
 })
 # R/analysis.R and R/plots.R are sourced automatically by Shiny.
 
@@ -101,7 +100,7 @@ home_tab <- tabPanel(
               div(class = "mini-step", div(class = "num", "2"), div("Explore descriptive statistics, distributions and correlations")),
               div(class = "mini-step", div(class = "num", "3"), div("Test for non-linearity using the BDS test on ARIMAX residuals")),
               div(class = "mini-step", div(class = "num", "4"), div("Fit penalised DLNMs and estimate cumulative and lag-specific effects")),
-              div(class = "mini-step", div(class = "num", "5"), div("Compare with SVAR impulse responses and download all results"))
+              div(class = "mini-step", div(class = "num", "5"), div("Visualise the effects and download all tables and figures"))
           )
       )
   ),
@@ -128,9 +127,9 @@ home_tab <- tabPanel(
           div(class = "feature g", div(class = "ico", icon("clock-rotate-left")),
               h4("Lag-specific effects"),
               p("Effects at selected lags with confidence intervals, Z statistics, p-values and significance stars, plus 3D and contour surfaces.")),
-          div(class = "feature o", div(class = "ico", icon("bolt")),
-              h4("SVAR impulse response"),
-              p("A recursive structural VAR gives a linear benchmark: the dynamic response of Y to a one-standard-deviation shock in X with bootstrap bands."))
+          div(class = "feature o", div(class = "ico", icon("chart-area")),
+              h4("Interactive plots and downloads"),
+              p("3D exposure-lag-response surface, contour map, lag-response and exposure-response curves, with Excel tables and publication-quality figures."))
       ),
       br(),
       div(class = "panel",
@@ -149,8 +148,7 @@ home_tab <- tabPanel(
             tags$li("Descriptive statistics table and interactive time-series, distribution and correlation plots"),
             tags$li("BDS test table (embedding dimensions 2 to m, four epsilon values)"),
             tags$li("Cumulative effect table and selected lag-effect table with CI, Z, p-value and significance"),
-            tags$li("Model diagnostics (AIC, BIC, deviance explained, Ljung-Box, Jarque-Bera, ADF, Breusch-Pagan) and full model specification"),
-            tags$li("Interactive 3D surface, contour, lag-response, exposure-response, cumulative and IRF plots"),
+            tags$li("Interactive 3D surface, contour, lag-response, exposure-response and cumulative effect plots"),
             tags$li("One-click Excel workbook of all tables and a ZIP of publication-quality (300/600 dpi) figures")
           )
       ),
@@ -160,8 +158,7 @@ home_tab <- tabPanel(
                   tags$li("Gasparrini, A., Armstrong, B. and Kenward, M.G. (2010). Distributed lag non-linear models. Statistics in Medicine, 29(21), 2224-2234."),
                   tags$li("Gasparrini, A., Scheipl, F., Armstrong, B. and Kenward, M.G. (2017). A penalized framework for distributed lag non-linear models. Biometrics, 73(3), 938-948."),
                   tags$li("Brock, W.A., Dechert, W.D., Scheinkman, J.A. and LeBaron, B. (1996). A test for independence based on the correlation dimension. Econometric Reviews, 15(3), 197-235."),
-                  tags$li("Wood, S.N. (2017). Generalized Additive Models: An Introduction with R (2nd ed.). Chapman and Hall/CRC."),
-                  tags$li("Pfaff, B. (2008). VAR, SVAR and SVEC models: Implementation within R package vars. Journal of Statistical Software, 27(4), 1-32.")
+                  tags$li("Wood, S.N. (2017). Generalized Additive Models: An Introduction with R (2nd ed.). Chapman and Hall/CRC.")
           )
       )
   )
@@ -265,21 +262,12 @@ settings_panel <- div(
       )
     ),
     accordion_panel(
-      "Tests and SVAR impulse response", icon = icon("bolt"),
+      "BDS non-linearity test", icon = icon("wave-square"),
       fluidRow(
-        column(3, numericInput("bds_m", "BDS: max embedding dimension", 5, min = 2, max = 10)),
-        column(3, numericInput("lb_lag", "Ljung-Box lag", 12, min = 1, max = 60)),
-        column(3, checkboxInput("run_svar", "Estimate SVAR impulse responses", TRUE),
-               checkboxInput("var_p_auto", "Select VAR lag by AIC", FALSE)),
-        column(3, conditionalPanel("!input.var_p_auto", numericInput("var_p", "VAR lag order (p)", 1, min = 1, max = 24)))
-      ),
-      fluidRow(
-        column(4, selectInput("svar_order", "Recursive ordering",
-                              c("Response first (Y -> X)" = "y_first", "Exposure first (X -> Y)" = "x_first"), "y_first"),
-               help_txt("With 'Exposure first', the shock can affect Y in the same period.")),
-        column(4, numericInput("irf_horizon", "IRF horizon (periods)", 12, min = 1, max = 120)),
-        column(4, numericInput("irf_boot", "Bootstrap runs for IRF bands", 500, min = 0, max = 5000, step = 100),
-               help_txt("1000 runs recommended for publication; 0 = no bands (fastest)."))
+        column(4, numericInput("bds_m", "Maximum embedding dimension (m)", 5, min = 2, max = 10),
+               help_txt("The BDS test is reported for embedding dimensions 2 to m on ARIMAX residuals.")),
+        column(8, div(class = "note", style = "margin-top:0;", icon("circle-info"),
+                      " For each response-exposure pair an ARIMAX model is fitted automatically and its residuals are tested for remaining non-linear dependence at epsilon = 0.5, 1, 1.5 and 2 times the residual standard deviation."))
       )
     )
   ),
@@ -296,6 +284,11 @@ results_panel <- div(
     "output.has_results",
     navset_card_tab(
       id = "res_tabs",
+      nav_panel("BDS test", icon = icon("wave-square"),
+                div(class = "note", icon("circle-info"),
+                    " BDS test on ARIMAX residuals. A small p-value rejects the i.i.d. hypothesis, indicating remaining non-linear structure that supports the DLNM approach. ",
+                    "Epsilon is expressed as a multiple of the residual standard deviation. Stars: *** p<0.01, ** p<0.05, * p<0.10."),
+                spin(DTOutput("tbl_bds"))),
       nav_panel("Cumulative effects", icon = icon("layer-group"),
                 div(class = "note", icon("circle-info"),
                     " Overall effect of the exposure level summed over lags 0 to L, relative to the reference level. ",
@@ -304,20 +297,6 @@ results_panel <- div(
       nav_panel("Lag-specific effects", icon = icon("clock-rotate-left"),
                 div(class = "note", icon("circle-info"), " Effect at each selected lag for each exposure level, relative to the reference level."),
                 spin(DTOutput("tbl_lag"))),
-      nav_panel("BDS test", icon = icon("wave-square"),
-                div(class = "note", icon("circle-info"),
-                    " BDS test on ARIMAX residuals. A small p-value rejects the i.i.d. hypothesis, indicating remaining non-linear structure that supports the DLNM approach. ",
-                    "Epsilon is expressed as a multiple of the residual standard deviation."),
-                spin(DTOutput("tbl_bds"))),
-      nav_panel("Diagnostics", icon = icon("stethoscope"),
-                div(class = "note", icon("circle-info"),
-                    " Ljung-Box (residual autocorrelation), Jarque-Bera (normality), ADF (residual stationarity) and Breusch-Pagan (heteroscedasticity) tests on DLNM residuals."),
-                spin(DTOutput("tbl_diag"))),
-      nav_panel("Specification", icon = icon("sliders"), spin(DTOutput("tbl_spec"))),
-      nav_panel("SVAR IRF", icon = icon("bolt"),
-                div(class = "note", icon("circle-info"),
-                    " Response of Y to a one-standard-deviation structural shock in X. 'Significant' = the bootstrap band excludes zero."),
-                spin(DTOutput("tbl_irf"))),
       nav_panel("Plots", icon = icon("chart-area"),
                 fluidRow(
                   column(4, selectInput("plot_y", "Response (Y)", NULL, selectize = FALSE)),
@@ -331,8 +310,7 @@ results_panel <- div(
                   nav_panel("Contour", spin(plotlyOutput("pl_contour", height = "560px"))),
                   nav_panel("Lag-response", spin(plotlyOutput("pl_lagslice", height = "520px"))),
                   nav_panel("Exposure-response by lag", spin(plotlyOutput("pl_expresp", height = "520px"))),
-                  nav_panel("Cumulative effect", spin(plotlyOutput("pl_cum", height = "520px"))),
-                  nav_panel("Impulse response", spin(plotlyOutput("pl_irf", height = "500px")))
+                  nav_panel("Cumulative effect", spin(plotlyOutput("pl_cum", height = "520px")))
                 )),
       nav_panel("Error log", icon = icon("triangle-exclamation"), DTOutput("tbl_err"))
     )
@@ -346,10 +324,10 @@ downloads_panel <- div(
     "output.has_results",
     fluidRow(
       column(6, card(card_header(icon("file-excel"), "Excel workbook", span(class = "sub", "All result tables, data used, descriptive statistics and settings")),
-                     card_body(p("Sheets: Data_Used, Descriptive_Stats, BDS_Test, Cumulative_Effects, Selected_Lag_Effects, Model_Diagnostics, Model_Specifications, SVAR_IRF, Error_Log, Settings."),
+                     card_body(p("Sheets: Data_Used, Descriptive_Stats, BDS_Test, Cumulative_Effects, Selected_Lag_Effects, Error_Log, Settings."),
                                downloadButton("dl_excel", "Download Excel workbook", class = "btn-dl")))),
       column(6, card(card_header(icon("images"), "Publication figures", span(class = "sub", "PNG figures for every response-exposure pair, in a ZIP archive")),
-                     card_body(p("3D surface, contour, lag-response, exposure-response by lag, cumulative effect and SVAR IRF."),
+                     card_body(p("3D surface, contour, lag-response, exposure-response by lag and cumulative effect."),
                                radioButtons("fig_dpi", "Resolution", c("300 dpi" = 300, "600 dpi (slower)" = 600), 300, inline = TRUE),
                                downloadButton("dl_figs", "Download figures (ZIP)", class = "btn-dl"))))
     )
@@ -437,7 +415,7 @@ instructions_tab <- tabPanel(
                  tags$li("One or more numeric columns with the dependent variables, e.g. trade value, price, production, arrivals."),
                  tags$li("Column headers in the first row. Accepted formats: .csv, .xlsx, .xls (choose the sheet after upload).")),
                tags$table(class = "mini-table",
-                          tags$tr(tags$th("Time"), tags$th("Pulses_Trade_Value"), tags$th("Rice_Trade_Value"), tags$th("...")),
+                          tags$tr(tags$th("Time"), tags$th("Y1"), tags$th("Y2"), tags$th("...")),
                           tags$tr(tags$td("2015-01-01"), tags$td("768.20"), tags$td("1266.65"), tags$td("...")),
                           tags$tr(tags$td("2015-02-01"), tags$td("928.81"), tags$td("1178.63"), tags$td("...")))),
       ins_step("2", "Prepare your X file (explanatory / exposure variables)",
@@ -446,7 +424,7 @@ instructions_tab <- tabPanel(
                  tags$li("N numeric columns of explanatory variables (shocks), e.g. geopolitical risk index, rainfall or temperature anomaly, exchange rate."),
                  tags$li("Rows are matched with the Y file by time, so only common time points are used. Row order does not matter for calendar times.")),
                tags$table(class = "mini-table",
-                          tags$tr(tags$th("Time"), tags$th("GPR_World"), tags$th("GPR_India"), tags$th("...")),
+                          tags$tr(tags$th("Time"), tags$th("X1"), tags$th("X2"), tags$th("...")),
                           tags$tr(tags$td("2015-01-01"), tags$td("106.22"), tags$td("85.59"), tags$td("...")),
                           tags$tr(tags$td("2015-02-01"), tags$td("84.38"), tags$td("88.39"), tags$td("..."))),
                p(class = "muted", icon("download"), " Sample Y and X files (CSV and Excel) can be downloaded on the Method > Upload data page.")),
@@ -476,16 +454,14 @@ instructions_tab <- tabPanel(
                           tags$tr(tags$td("Reference exposure"), tags$td("Effects are expressed relative to this level (median by default); its effect is zero by construction.")),
                           tags$tr(tags$td("Exposure levels"), tags$td("Levels at which effects are reported: percentiles (5, 25, 50, 75, 95 by default), an even grid or your own values.")),
                           tags$tr(tags$td("Selected lags"), tags$td("Lags reported in the lag-specific table and exposure-response plot.")),
-                          tags$tr(tags$td("BDS / Ljung-Box"), tags$td("Maximum embedding dimension for the BDS test and the lag used for the Ljung-Box residual test.")),
-                          tags$tr(tags$td("SVAR"), tags$td("VAR lag order (fixed or AIC), recursive ordering, IRF horizon and number of bootstrap runs for the confidence band.")))),
+                          tags$tr(tags$td("BDS test"), tags$td("Maximum embedding dimension (m) for the BDS non-linearity test on ARIMAX residuals.")))),
       ins_step("6", "Run and interpret",
                tags$ul(
                  tags$li("Click ", tags$b("Run Analysis"), ". A progress bar shows each response-exposure pair. If a pair fails (e.g. lag too long), the reason is listed in the ", tags$b("Error log"), " and the others still run."),
                  tags$li(tags$b("Cumulative effects:"), " the total change in Y over lags 0 to L when X is at a given level instead of the reference. A positive value means an increase in Y."),
                  tags$li(tags$b("Lag-specific effects:"), " when the effect occurs. Look for lags where the confidence interval excludes zero."),
                  tags$li(tags$b("BDS test:"), " p < 0.05 indicates non-linear dependence left by a linear ARIMAX model, which supports the use of DLNM."),
-                 tags$li(tags$b("Diagnostics:"), " lower AIC/BIC and higher deviance explained indicate better fit; large p-values for Ljung-Box, Jarque-Bera and Breusch-Pagan indicate well-behaved residuals."),
-                 tags$li(tags$b("Plots:"), " choose a pair to see the 3D exposure-lag-response surface, contour map, lag-response curves, exposure-response curves at selected lags, cumulative curve and the SVAR impulse response."))),
+                 tags$li(tags$b("Plots:"), " choose a pair to see the 3D exposure-lag-response surface, contour map, lag-response curves, exposure-response curves at selected lags and the cumulative curve."))),
       ins_step("7", "Download",
                tags$ul(
                  tags$li("Method > 5. Downloads: one Excel workbook with every table (plus data used and settings) and a ZIP of publication-quality PNG figures at 300 or 600 dpi."),
@@ -496,7 +472,7 @@ instructions_tab <- tabPanel(
             tags$li(tags$b("'No common time points'"), " - the Y and X files cover different periods or their time columns are written differently. Write both the same way, or set the Time format manually."),
             tags$li(tags$b("'Maximum lag is too large'"), " - reduce the maximum lag or use a longer series."),
             tags$li(tags$b("Log transformation error"), " - log and log-return need strictly positive values; use first difference or none instead."),
-            tags$li(tags$b("Analysis is slow"), " - reduce the number of pairs, set bootstrap runs to 200-500, or untick SVAR during exploration."),
+            tags$li(tags$b("Analysis is slow"), " - reduce the number of response-exposure pairs or the maximum lag, or use fewer exposure levels."),
             tags$li(tags$b("Numbers with commas"), " (e.g. 1,234.5) are cleaned automatically; non-numeric columns are ignored with a message.")
           ))
   )
@@ -562,7 +538,7 @@ ui <- tagList(
 
 dt_out <- function(df, digits = 4, page = 10, p_cols = NULL, filter = "top") {
   if (is.null(df) || !nrow(df)) return(DT::datatable(data.frame(Message = "No results available"), rownames = FALSE, style = DT_STYLE, options = list(dom = "t")))
-  int_cols <- c("N", "Lag", "Embedding_Dimension", "Horizon", "VAR_lag", "N_used", "LB_lag")
+  int_cols <- c("N", "Lag", "Embedding_Dimension")
   num_cols <- names(df)[vapply(df, is.numeric, logical(1)) & !names(df) %in% int_cols]
   pc <- intersect(names(df), c(p_cols, "P_value", "P_Value", "JB_p", "SW_p", "ADF_p", "LB_p", "BP_p"))
   dt <- DT::datatable(
@@ -587,8 +563,7 @@ default_settings <- list(
   trend = "linear", trend_df_per_year = 4, seasonality = "none", gam_method = "REML",
   reference = "median", reference_quantile = 0.5, reference_custom = 0, prediction_method = "percentiles",
   percentiles = "5, 25, 50, 75, 95", grid_points = 20, custom_values = "", selected_lags = "1, 3, 6, 9, 12",
-  confidence_level = 0.95, bds_m = 5, lb_lag = 12, run_svar = TRUE, var_p_auto = FALSE, var_p = 1,
-  svar_order = "y_first", irf_horizon = 12, irf_boot = 500
+  confidence_level = 0.95, bds_m = 5
 )
 
 freq_default_lag <- function(unit) switch(as.character(unit), "months" = 12, "quarters" = 8, "weeks" = 12, "days" = 14,
@@ -722,8 +697,6 @@ server <- function(input, output, session) {
     updateSelectInput(session, "hist_var", choices = allv)
     L <- min(freq_default_lag(m$unit), max(1, floor(nrow(m$data) / 4)))
     updateNumericInput(session, "max_lag", value = L)
-    updateNumericInput(session, "irf_horizon", value = L)
-    updateNumericInput(session, "lb_lag", value = L)
     updateTextInput(session, "selected_lags", value = paste(unique(pmax(1, round(c(1, L / 4, L / 2, 3 * L / 4, L)))), collapse = ", "))
     rv$results <- NULL
   })
@@ -765,20 +738,18 @@ server <- function(input, output, session) {
   observeEvent(input$reset_defaults, {
     s <- default_settings
     for (nm in c("y_transform", "x_transform", "freq", "exposure_basis", "lag_basis", "trend", "seasonality",
-                 "gam_method", "reference", "prediction_method", "svar_order"))
+                 "gam_method", "reference", "prediction_method"))
       updateSelectInput(session, nm, selected = s[[nm]])
     for (nm in c("exposure_df", "spline_degree", "lag_df", "trend_df_per_year", "reference_custom", "grid_points",
-                 "bds_m", "var_p", "irf_boot"))
+                 "bds_m"))
       updateNumericInput(session, nm, value = s[[nm]])
     for (nm in c("effect_label", "lag_label", "percentiles", "custom_values"))
       updateTextInput(session, nm, value = s[[nm]])
     updateSliderInput(session, "confidence_level", value = s$confidence_level)
     updateSliderInput(session, "reference_quantile", value = s$reference_quantile)
-    updateCheckboxInput(session, "run_svar", value = TRUE); updateCheckboxInput(session, "var_p_auto", value = FALSE)
     if (isTRUE(data_ok())) {
       L <- min(freq_default_lag(merged()$unit), max(1, floor(nrow(merged()$data) / 4)))
-      updateNumericInput(session, "max_lag", value = L); updateNumericInput(session, "irf_horizon", value = L)
-      updateNumericInput(session, "lb_lag", value = L)
+      updateNumericInput(session, "max_lag", value = L)
       updateTextInput(session, "selected_lags", value = paste(unique(pmax(1, round(c(1, L / 4, L / 2, 3 * L / 4, L)))), collapse = ", "))
     }
     showNotification("Settings reset to defaults.", type = "message")
@@ -790,7 +761,7 @@ server <- function(input, output, session) {
     md <- model_data()
     nobs <- if (is.data.frame(md)) nrow(md) else NA
     span(class = "muted", tags$b(np), " response-exposure pair(s) | ", tags$b(nobs), " observations after transformation | max lag ",
-         tags$b(input$max_lag), if (isTRUE(input$run_svar)) paste0(" | SVAR with ", input$irf_boot, " bootstrap runs"))
+         tags$b(input$max_lag))
   })
 
   collect_settings <- function() {
@@ -805,10 +776,8 @@ server <- function(input, output, session) {
       prediction_method = input$prediction_method, percentiles = parse_num_list(input$percentiles),
       grid_points = input$grid_points, custom_values = parse_num_list(input$custom_values),
       selected_lags = parse_num_list(input$selected_lags), confidence_level = input$confidence_level,
-      lb_lag = input$lb_lag, y_transform = input$y_transform, x_transform = input$x_transform,
-      var_p = as.integer(input$var_p), var_p_auto = isTRUE(input$var_p_auto), irf_horizon = as.integer(input$irf_horizon),
-      irf_boot = as.integer(input$irf_boot), svar_order = input$svar_order,
-      run_svar = isTRUE(input$run_svar), bds_m = as.integer(input$bds_m)
+      lb_lag = as.integer(input$max_lag), y_transform = input$y_transform, x_transform = input$x_transform,
+      bds_m = as.integer(input$bds_m)
     )
   }
 
@@ -830,7 +799,7 @@ server <- function(input, output, session) {
 
     pairs <- expand.grid(y = yv, x = xv, stringsAsFactors = FALSE)
     np <- nrow(pairs)
-    fits <- list(); bds <- list(); irfs <- list(); errs <- list()
+    fits <- list(); bds <- list(); errs <- list()
     log_err <- function(y, x, stage, e) errs[[length(errs) + 1]] <<- data.frame(Response = y, Exposure = x, Stage = stage,
                                                                                  Error_Message = conditionMessage(e), stringsAsFactors = FALSE)
     t0 <- Sys.time()
@@ -844,9 +813,6 @@ server <- function(input, output, session) {
         incProgress(0.3 / np, detail = paste(lbl, "- DLNM"))
         tryCatch(fits[[key]] <- fit_dlnm_pair(d, y, x, s),
                  error = function(e) log_err(y, x, "DLNM", e))
-        incProgress(0.3 / np, detail = paste(lbl, if (s$run_svar) "- SVAR impulse response" else ""))
-        if (s$run_svar) tryCatch(irfs[[key]] <- fit_svar_irf(d, y, x, s),
-                                 error = function(e) log_err(y, x, "SVAR IRF", e))
         incProgress(0.4 / np)
       }
     })
@@ -856,10 +822,9 @@ server <- function(input, output, session) {
       out <- do.call(rbind, lst); rownames(out) <- NULL; out
     }
     rv$results <- list(
-      settings = s, data = d, pairs = pairs, fits = fits, irfs = irfs,
+      settings = s, data = d, pairs = pairs, fits = fits,
       cumulative = bind(fits, "cumulative"), lag_effects = bind(fits, "lag_effects"),
-      diagnostics = bind(fits, "diagnostics"), spec = bind(fits, "spec"),
-      bds = bind(bds), irf = bind(irfs), errors = bind(errs),
+      bds = bind(bds), errors = bind(errs),
       elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs")),
       desc = tryCatch(desc_tbl(), error = function(e) NULL)
     )
@@ -902,9 +867,6 @@ server <- function(input, output, session) {
   output$tbl_cum <- renderDT({ req(rv$results); dt_out(rv$results$cumulative) })
   output$tbl_lag <- renderDT({ req(rv$results); dt_out(rv$results$lag_effects) })
   output$tbl_bds <- renderDT({ req(rv$results); dt_out(rv$results$bds) })
-  output$tbl_diag <- renderDT({ req(rv$results); dt_out(rv$results$diagnostics) })
-  output$tbl_spec <- renderDT({ req(rv$results); dt_out(rv$results$spec, page = 37) })
-  output$tbl_irf <- renderDT({ req(rv$results); dt_out(rv$results$irf, page = 13) })
   output$tbl_err <- renderDT({
     req(rv$results)
     if (!nrow(rv$results$errors)) return(DT::datatable(data.frame(Status = "No errors - all steps completed successfully."), rownames = FALSE, style = DT_STYLE, options = list(dom = "t")))
@@ -929,11 +891,6 @@ server <- function(input, output, session) {
   output$pl_lagslice <- renderPlotly(plot_lag_slices(sel_fit(), labs()$lag, labs()$eff))
   output$pl_expresp <- renderPlotly(plot_exposure_response(sel_fit(), labs()$x, labs()$eff))
   output$pl_cum <- renderPlotly(plot_cumulative(sel_fit(), labs()$x, labs()$eff))
-  output$pl_irf <- renderPlotly({
-    ir <- rv$results$irfs[[paste(input$plot_y, input$plot_x, sep = " || ")]]
-    validate(need(!is.null(ir), "SVAR impulse response not available for this pair (disabled or failed - see Error log)."))
-    plot_irf(ir, labs()$unit)
-  })
 
   output$interpretation <- renderUI({
     f <- sel_fit(); ce <- f$cumulative; s <- rv$results$settings
@@ -960,7 +917,6 @@ server <- function(input, output, session) {
       sets <- data.frame(Setting = names(s), Value = vapply(s, function(v) paste(v, collapse = ", "), character(1)))
       sheets <- list(Data_Used = d, Descriptive_Stats = r$desc, BDS_Test = r$bds,
                      Cumulative_Effects = r$cumulative, Selected_Lag_Effects = r$lag_effects,
-                     Model_Diagnostics = r$diagnostics, Model_Specifications = r$spec, SVAR_IRF = r$irf,
                      Error_Log = if (nrow(r$errors)) r$errors else data.frame(Status = "No errors"), Settings = sets)
       wb <- openxlsx::createWorkbook(creator = "DLNM Explorer, ICAR-IASRI")
       hs <- openxlsx::createStyle(textDecoration = "bold", fgFill = "#0B3A53", fontColour = "#FFFFFF", halign = "center", border = "Bottom")
@@ -989,7 +945,7 @@ server <- function(input, output, session) {
           incProgress(1 / length(r$fits), detail = paste(yx, collapse = " ~ "))
           pre <- gsub("[^A-Za-z0-9]+", "_", paste0(yx[1], "__", yx[2]))
           files <- c(files, tryCatch(save_publication_figures(
-            r$fits[[k]], r$irfs[[k]], tmp, pre, xlab = yx[2],
+            r$fits[[k]], tmp, pre, xlab = yx[2],
             lag_lab = if (nzchar(input$lag_label)) input$lag_label else paste0("Lag (", s$unit, ")"),
             eff_lab = if (nzchar(input$effect_label)) input$effect_label else paste("Effect on", yx[1]),
             dpi = as.numeric(input$fig_dpi), unit = s$unit), error = function(e) character()))
