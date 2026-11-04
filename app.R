@@ -479,14 +479,15 @@ instructions_tab <- tabPanel(
 )
 
 # ---------------- DEVELOPERS ----------------
-dev_card <- function(img, name, role, email, scholar) {
+dev_card <- function(img, name, role, email, scholar,
+                     org = "ICAR-Indian Agricultural Statistics Research Institute, New Delhi") {
   div(class = "dev",
       div(class = "band"),
       tags$img(src = img, alt = name),
       div(class = "body",
           h4(name),
           div(class = "role", role),
-          div(class = "org", "ICAR-Indian Agricultural Statistics Research Institute, New Delhi"),
+          div(class = "org", org),
           div(class = "links",
               tags$a(class = "mail", href = paste0("mailto:", email), icon("envelope"), email),
               tags$a(class = "gs", href = scholar, target = "_blank", icon("graduation-cap"), "Google Scholar profile"))))
@@ -497,14 +498,17 @@ developers_tab <- tabPanel(
   div(class = "page-wrap",
       div(class = "eyebrow", "Developer team"),
       h2(class = "section-title", "Meet the team"),
-      p(class = "section-sub", "This web application was developed at ICAR-Indian Agricultural Statistics Research Institute, New Delhi."),
+      p(class = "section-sub", "The team behind this web application."),
       div(class = "dev-grid",
           dev_card("img/ranjit_kumar_paul.jpg", "Dr. Ranjit Kumar Paul", "ICAR National Fellow",
                    "ranjitstat@gmail.com", "https://scholar.google.com/citations?user=wBWuZJgAAAAJ&hl=en"),
           dev_card("img/md_yeasin.jpg", "Dr. Md Yeasin", "Scientist",
                    "yeasin.iasri@gmail.com", "https://scholar.google.com/citations?user=xejMKD0AAAAJ&hl=en"),
           dev_card("img/pushkar_bora.jpg", "Pushkar Bora", "Junior Research Fellow",
-                   "borapushkar1999@gmail.com", "https://scholar.google.com/citations?user=xVIXGlwAAAAJ&hl=en")
+                   "borapushkar1999@gmail.com", "https://scholar.google.com/citations?user=xVIXGlwAAAAJ&hl=en"),
+          dev_card("img/purushottam_sharma.jpg", "Dr. Purushottam Sharma", "Principal Scientist",
+                   "purushottamji@gmail.com", "https://scholar.google.com/citations?view_op=list_works&hl=en&user=c7PfLbkAAAAJ",
+                   org = "ICAR-National Institute of Agricultural Economics and Policy Research")
       )
   )
 )

@@ -232,3 +232,9 @@ table.dataTable thead th { background: #f0f5f8; color: var(--navy); font-weight:
 table.dataTable thead input, table.dataTable thead .form-control { font-size: 12px; border-radius: 6px; }
 .dataTables_wrapper .pagination .page-item.active .page-link { background: var(--teal); border-color: var(--teal); }
 .dataTables_wrapper .page-link { color: var(--teal); }
+
+/* four team members: 4 across on wide screens, 2 on medium, 1 on phones */
+.dev-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+.dev .links a { font-size: 13px; word-break: break-all; }
+@media (max-width: 1200px) { .dev-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .dev-grid { grid-template-columns: 1fr; } }
