@@ -22,7 +22,7 @@ suppressPackageStartupMessages({
 options(shiny.maxRequestSize = 50 * 1024^2, spinner.color = "#0b5d7a", spinner.type = 6)
 
 APP_TITLE   <- "DLNM Explorer"
-APP_TAGLINE <- "Distributed Lag Non-Linear Modelling of Exogenous Shocks on Time Series"
+APP_TAGLINE <- "Distributed Lag Non-Linear Modelling of Exogenous Shocks on Agricultural System"
 IASRI_URL   <- "https://www.iasri.res.in/"
 COUNTER_FILE <- "visitor_count.txt"
 

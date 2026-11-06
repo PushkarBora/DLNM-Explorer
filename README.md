@@ -1,6 +1,6 @@
 # DLNM Explorer — ICAR-IASRI
 
-**Distributed Lag Non-Linear Modelling of Exogenous Shocks on Time Series** — an R Shiny web application.
+**Distributed Lag Non-Linear Modelling of Exogenous Shocks on Agricultural System** — an R Shiny web application.
 
 ## Run locally
 
